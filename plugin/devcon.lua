@@ -57,6 +57,11 @@ vim.api.nvim_create_user_command("DevConExec", function(args)
   end
 end, { nargs = "?", desc = "Execute JavaScript in browser" })
 
+vim.api.nvim_create_user_command("DevConResize", function()
+  require("devcon.ui").resize_console_window()
+  vim.notify("DevCon: Console window resized", vim.log.levels.INFO)
+end, { desc = "Resize DevCon console window" })
+
 -- Auto-setup with lazy.nvim opts or default config
 vim.defer_fn(function()
   if not vim.g.devcon_setup_called then

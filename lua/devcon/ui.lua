@@ -6,6 +6,7 @@ M.state = {
   console_lines = {},
   is_open = false,
   config = nil,
+  resize_autocmd_id = nil,
 }
 
 -- Console log level colors
@@ -65,6 +66,9 @@ function M.create_console_window()
   -- Set buffer keymaps
   M.set_console_keymaps()
   
+  -- Setup resize handler
+  M.setup_resize_handler()
+  
   M.state.is_open = true
   
   return M.state.console_buf
@@ -72,6 +76,9 @@ end
 
 -- Close console window
 function M.close_console_window()
+  -- Clean up resize handler
+  M.cleanup_resize_handler()
+  
   if M.state.console_win and vim.api.nvim_win_is_valid(M.state.console_win) then
     vim.api.nvim_win_close(M.state.console_win, true)
   end
@@ -284,6 +291,49 @@ function M.get_status()
     buffer_valid = M.state.console_buf and vim.api.nvim_buf_is_valid(M.state.console_buf),
     window_valid = M.state.console_win and vim.api.nvim_win_is_valid(M.state.console_win),
   }
+end
+
+-- Setup resize handler
+function M.setup_resize_handler()
+  if M.state.resize_autocmd_id then
+    return -- Already set up
+  end
+  
+  M.state.resize_autocmd_id = vim.api.nvim_create_autocmd("VimResized", {
+    callback = function()
+      M.handle_resize()
+    end,
+    desc = "DevCon console window resize handler"
+  })
+end
+
+-- Clean up resize handler
+function M.cleanup_resize_handler()
+  if M.state.resize_autocmd_id then
+    vim.api.nvim_del_autocmd(M.state.resize_autocmd_id)
+    M.state.resize_autocmd_id = nil
+  end
+end
+
+-- Handle nvim resize event
+function M.handle_resize()
+  if not M.state.is_open or not M.state.console_win or not vim.api.nvim_win_is_valid(M.state.console_win) then
+    return
+  end
+  
+  -- Get current window config
+  local ui_config = M.state.config and M.state.config.ui or { window = { width = 100, height = 25, position = "bottom" } }
+  local new_config = M.get_window_config(ui_config.window)
+  
+  -- Update window configuration
+  pcall(function()
+    vim.api.nvim_win_set_config(M.state.console_win, new_config)
+  end)
+end
+
+-- Update window size and position manually (can be called by user)
+function M.resize_console_window()
+  M.handle_resize()
 end
 
 return M
