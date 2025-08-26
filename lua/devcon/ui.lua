@@ -168,10 +168,21 @@ function M.append_console_message(message_data)
   -- Update buffer
   M.update_console_buffer()
   
-  -- Auto-scroll if enabled
+  -- Auto-scroll to bottom if enabled and window is valid
   local auto_scroll = (M.state.config and M.state.config.ui.console.auto_scroll) or true
-  if auto_scroll and M.state.console_win then
-    vim.api.nvim_win_set_cursor(M.state.console_win, { vim.api.nvim_buf_line_count(M.state.console_buf), 0 })
+  if auto_scroll and M.state.console_win and vim.api.nvim_win_is_valid(M.state.console_win) then
+    vim.schedule(function()
+      if vim.api.nvim_win_is_valid(M.state.console_win) and vim.api.nvim_buf_is_valid(M.state.console_buf) then
+        local line_count = vim.api.nvim_buf_line_count(M.state.console_buf)
+        vim.api.nvim_win_set_cursor(M.state.console_win, { line_count, 0 })
+        -- Also scroll to show the last line
+        pcall(function()
+          vim.api.nvim_win_call(M.state.console_win, function()
+            vim.cmd("normal! G")
+          end)
+        end)
+      end
+    end)
   end
 end
 
