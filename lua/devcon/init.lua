@@ -93,8 +93,20 @@ function M.start_debug_session(url)
   -- Wait a bit longer for browser to start
   vim.notify("DevCon: Waiting for Chrome to start...", vim.log.levels.INFO)
   vim.defer_fn(function()
+    -- Check if already connected to avoid duplicate connections
+    if M.state.is_connected or M.state.websocket then
+      vim.notify("DevCon: Already connected, skipping", vim.log.levels.INFO)
+      return
+    end
+    
     -- Get WebSocket URL from Chrome DevTools API with retry
     websocket.get_websocket_url(M.config.browser.debug_port, function(ws_url)
+      -- Double-check connection state before proceeding
+      if M.state.is_connected or M.state.websocket then
+        vim.notify("DevCon: Already connected during callback, skipping", vim.log.levels.INFO)
+        return
+      end
+      
       if not ws_url then
         vim.notify("DevCon: Failed to get WebSocket URL after retries", vim.log.levels.ERROR)
         return

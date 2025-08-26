@@ -70,7 +70,10 @@ function M.get_websocket_url(debug_port, callback, retry_count)
       for _, tab in ipairs(json_data) do
         if tab.webSocketDebuggerUrl and tab.type == "page" then
           vim.notify("DevCon: Found debuggable tab: " .. (tab.title or "Unknown"), vim.log.levels.INFO)
-          callback(tab.webSocketDebuggerUrl)
+          -- Call callback only once and return immediately
+          vim.schedule(function()
+            callback(tab.webSocketDebuggerUrl)
+          end)
           return
         end
       end
