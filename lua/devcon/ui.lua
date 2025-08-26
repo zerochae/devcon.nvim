@@ -193,8 +193,13 @@ function M.format_message_for_display(message_data)
     end
   end
   
+  -- Handle newlines in message text by splitting into multiple lines
+  local message_text = message_data.text or ""
+  -- Replace newlines with spaces to keep it on one line, or split if needed
+  message_text = message_text:gsub("\n", " "):gsub("\r", " ")
+  
   return {
-    text = timestamp .. level_prefix .. (message_data.text or "") .. source_info,
+    text = timestamp .. level_prefix .. message_text .. source_info,
     level = message_data.level or "log",
     raw_data = message_data,
   }
@@ -213,11 +218,16 @@ function M.update_console_buffer()
   -- Add console messages
   local display_lines = vim.deepcopy(header_lines)
   for _, msg in ipairs(M.state.console_lines) do
-    table.insert(display_lines, msg.text)
+    -- Ensure msg.text is a string and doesn't contain newlines
+    local text = tostring(msg.text or "")
+    text = text:gsub("\n", " "):gsub("\r", " ")
+    table.insert(display_lines, text)
   end
   
-  -- Update buffer
-  vim.api.nvim_buf_set_lines(M.state.console_buf, 0, -1, false, display_lines)
+  -- Update buffer safely
+  pcall(function()
+    vim.api.nvim_buf_set_lines(M.state.console_buf, 0, -1, false, display_lines)
+  end)
   
   -- Apply syntax highlighting
   M.apply_syntax_highlighting()

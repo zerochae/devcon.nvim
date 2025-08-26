@@ -160,7 +160,10 @@ end
 function M.format_console_message(message)
   local timestamp = os.date "%H:%M:%S"
   local level = message.level or "log"
-  local text = message.text or ""
+  local text = tostring(message.text or "")
+  
+  -- Clean up newlines and control characters
+  text = text:gsub("\n", " "):gsub("\r", " "):gsub("\t", " ")
 
   return {
     timestamp = timestamp,
@@ -181,18 +184,29 @@ function M.format_console_api_call(params)
   local text_parts = {}
   for _, arg in ipairs(args) do
     if arg.value ~= nil then
-      table.insert(text_parts, tostring(arg.value))
+      local value_str = tostring(arg.value)
+      -- Clean up newlines and control characters
+      value_str = value_str:gsub("\n", " "):gsub("\r", " "):gsub("\t", " ")
+      table.insert(text_parts, value_str)
     elseif arg.description then
-      table.insert(text_parts, arg.description)
+      local desc = tostring(arg.description)
+      desc = desc:gsub("\n", " "):gsub("\r", " "):gsub("\t", " ")
+      table.insert(text_parts, desc)
     else
-      table.insert(text_parts, vim.inspect(arg))
+      local inspected = vim.inspect(arg)
+      inspected = inspected:gsub("\n", " "):gsub("\r", " "):gsub("\t", " ")
+      table.insert(text_parts, inspected)
     end
   end
+
+  local final_text = table.concat(text_parts, " ")
+  -- Final cleanup
+  final_text = final_text:gsub("\n", " "):gsub("\r", " "):gsub("\t", " ")
 
   return {
     timestamp = timestamp,
     level = level,
-    text = table.concat(text_parts, " "),
+    text = final_text,
     source = "console-api",
   }
 end
@@ -200,11 +214,14 @@ end
 -- Format exception for display
 function M.format_exception(exception_details)
   local timestamp = os.date "%H:%M:%S"
-  local text = exception_details.text or "JavaScript Error"
+  local text = tostring(exception_details.text or "JavaScript Error")
 
   if exception_details.exception and exception_details.exception.description then
-    text = exception_details.exception.description
+    text = tostring(exception_details.exception.description)
   end
+  
+  -- Clean up newlines and control characters
+  text = text:gsub("\n", " "):gsub("\r", " "):gsub("\t", " ")
 
   return {
     timestamp = timestamp,

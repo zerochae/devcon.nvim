@@ -57,12 +57,12 @@ vim.api.nvim_create_user_command("DevConExec", function(args)
   end
 end, { nargs = "?", desc = "Execute JavaScript in browser" })
 
--- Auto-setup with default config if user doesn't call setup
-if not vim.g.devcon_setup_called then
-  vim.defer_fn(function()
-    if not vim.g.devcon_setup_called then
-      devcon.setup({})
-      vim.g.devcon_setup_called = true
-    end
-  end, 100)
-end
+-- Auto-setup with lazy.nvim opts or default config
+vim.defer_fn(function()
+  if not vim.g.devcon_setup_called then
+    -- Check if lazy.nvim passed opts
+    local lazy_opts = vim.g.lazy_devcon_opts or {}
+    devcon.setup(lazy_opts)
+    vim.g.devcon_setup_called = true
+  end
+end, 100)
