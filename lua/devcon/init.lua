@@ -75,11 +75,16 @@ function M.start_debug_session(url)
 
   -- Stop any existing session
   M.stop_debug_session()
+  
+  -- Kill any existing Chrome processes with debug port to avoid conflicts
+  vim.notify("DevCon: Stopping existing Chrome instances...", vim.log.levels.INFO)
+  vim.fn.system("pkill -f 'remote-debugging-port=" .. M.config.browser.debug_port .. "'")
+  vim.fn.system("sleep 1") -- Wait a moment
 
   -- Start browser with debugging enabled
   local browser_result = browser.start_browser(target_url, M.config.browser.debug_port, M.config.browser.type, M.config.browser.arc_mode, M.config.browser_paths)
   if not browser_result then
-    vim.notify("Failed to start browser", vim.log.levels.ERROR)
+    vim.notify("DevCon: Failed to start browser", vim.log.levels.ERROR)
     return false
   end
 
