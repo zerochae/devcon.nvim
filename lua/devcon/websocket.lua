@@ -20,7 +20,10 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
         else
-          callback(nil)
+          if not callback_called.value then
+            callback_called.value = true
+            callback(nil)
+          end
         end
         return
       end
@@ -35,7 +38,10 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
         else
-          callback(nil)
+          if not callback_called.value then
+            callback_called.value = true
+            callback(nil)
+          end
         end
         return
       end
@@ -49,7 +55,10 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
         else
-          callback(nil)
+          if not callback_called.value then
+            callback_called.value = true
+            callback(nil)
+          end
         end
         return
       end
@@ -61,8 +70,11 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
         else
-          vim.notify("DevCon: No debuggable tabs found", vim.log.levels.ERROR)
-          callback(nil)
+          if not callback_called.value then
+            callback_called.value = true
+            vim.notify("DevCon: No debuggable tabs found", vim.log.levels.ERROR)
+            callback(nil)
+          end
         end
         return
       end
@@ -72,10 +84,8 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
         if tab.webSocketDebuggerUrl and tab.type == "page" and not callback_called.value then
           callback_called.value = true
           vim.notify("DevCon: Found debuggable tab: " .. (tab.title or "Unknown"), vim.log.levels.INFO)
-          -- Call callback only once and return immediately
-          vim.schedule(function()
-            callback(tab.webSocketDebuggerUrl)
-          end)
+          -- Call callback immediately to prevent race condition
+          callback(tab.webSocketDebuggerUrl)
           return
         end
       end
@@ -86,8 +96,11 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
           M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
         end, 1000)
       else
-        vim.notify("DevCon: No debuggable pages found after all retries", vim.log.levels.ERROR)
-        callback(nil)
+        if not callback_called.value then
+          callback_called.value = true
+          vim.notify("DevCon: No debuggable pages found after all retries", vim.log.levels.ERROR)
+          callback(nil)
+        end
       end
     end,
     on_stderr = function(_, data)
@@ -111,8 +124,11 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
         else
-          vim.notify("DevCon: Failed to connect to Chrome after all retries", vim.log.levels.ERROR)
-          callback(nil)
+          if not callback_called.value then
+            callback_called.value = true
+            vim.notify("DevCon: Failed to connect to Chrome after all retries", vim.log.levels.ERROR)
+            callback(nil)
+          end
         end
       end
     end,
