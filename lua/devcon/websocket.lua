@@ -216,12 +216,12 @@ function M.handle_message(websocket, message_str)
   end
 
   -- Handle different message types
-  if message.method == "Console.messageAdded" then
-    M.handle_console_message(websocket, message.params.message)
-  elseif message.method == "Runtime.consoleAPICalled" then
+  -- Only handle Runtime.consoleAPICalled to avoid duplicate console messages
+  if message.method == "Runtime.consoleAPICalled" then
     M.handle_console_api_called(websocket, message.params)
   elseif message.method == "Runtime.exceptionThrown" then
     M.handle_exception(websocket, message.params.exceptionDetails)
+  -- Skip Console.messageAdded to prevent duplicate logs
   end
 
   -- Call user callback
