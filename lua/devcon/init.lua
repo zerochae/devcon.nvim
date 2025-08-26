@@ -6,6 +6,9 @@ local M = {}
 
 -- Default configuration
 M.config = {
+  -- Debug settings
+  debug = false, -- Set to true to show detailed logs
+  
   -- Browser settings
   browser = {
     type = "arc", -- chrome, edge, chromium, arc
@@ -64,10 +67,19 @@ M.state = {
   is_connected = false,
 }
 
+-- Helper function for debug logging
+local function debug_log(message, level)
+  if M.config.debug then
+    vim.notify(message, level or vim.log.levels.INFO)
+  end
+end
+
 function M.setup(opts)
   M.config = vim.tbl_deep_extend("force", M.config, opts or {})
-  -- Share config with UI module
+  -- Share config with modules
   ui.set_config(M.config)
+  websocket.set_config(M.config)
+  browser.set_config(M.config)
 end
 
 function M.start_debug_session(url)
@@ -77,7 +89,7 @@ function M.start_debug_session(url)
   M.stop_debug_session()
   
   -- Kill any existing Chrome processes with debug port to avoid conflicts
-  vim.notify("DevCon: Stopping existing Chrome instances...", vim.log.levels.INFO)
+  debug_log("DevCon: Stopping existing Chrome instances...")
   vim.fn.system("pkill -f 'remote-debugging-port=" .. M.config.browser.debug_port .. "'")
   vim.fn.system("sleep 1") -- Wait a moment
 
@@ -91,11 +103,11 @@ function M.start_debug_session(url)
   M.state.browser_process = browser_result
 
   -- Wait a bit longer for browser to start
-  vim.notify("DevCon: Waiting for Chrome to start...", vim.log.levels.INFO)
+  debug_log("DevCon: Waiting for browser to start...")
   vim.defer_fn(function()
     -- Check if already connected to avoid duplicate connections
     if M.state.is_connected or M.state.websocket then
-      vim.notify("DevCon: Already connected, skipping", vim.log.levels.INFO)
+      debug_log("DevCon: Already connected, skipping")
       return
     end
     
@@ -103,16 +115,16 @@ function M.start_debug_session(url)
     websocket.get_websocket_url(M.config.browser.debug_port, function(ws_url)
       -- Double-check connection state before proceeding
       if M.state.is_connected or M.state.websocket then
-        vim.notify("DevCon: Already connected during callback, skipping", vim.log.levels.INFO)
+        debug_log("DevCon: Already connected during callback, skipping")
         return
       end
       
       if not ws_url then
-        vim.notify("DevCon: Failed to get WebSocket URL after retries", vim.log.levels.ERROR)
+        vim.notify("DevCon: Failed to connect to browser", vim.log.levels.ERROR)
         return
       end
 
-      vim.notify("DevCon: Connecting to WebSocket...", vim.log.levels.INFO)
+      debug_log("DevCon: Connecting to WebSocket...")
       -- Connect to WebSocket
       M.state.websocket = websocket.connect(ws_url, {
         on_message = M.on_console_message,
@@ -124,9 +136,10 @@ function M.start_debug_session(url)
       if M.state.websocket then
         M.state.is_connected = true
         ui.create_console_window()
-        vim.notify("DevCon: Connected to browser debugger", vim.log.levels.INFO)
+        vim.notify("DevCon: Connected successfully", vim.log.levels.INFO)
 
         -- Enable console API
+        debug_log("DevCon: Enabling console API...")
         websocket.send_command(M.state.websocket, "Runtime.enable")
         websocket.send_command(M.state.websocket, "Console.enable")
       end
@@ -159,11 +172,11 @@ end
 
 function M.on_websocket_close()
   M.state.is_connected = false
-  vim.notify("DevCon: WebSocket connection closed", vim.log.levels.WARN)
+  debug_log("DevCon: WebSocket connection closed", vim.log.levels.WARN)
 end
 
 function M.on_websocket_error(error)
-  vim.notify("DevCon WebSocket error: " .. tostring(error), vim.log.levels.ERROR)
+  vim.notify("DevCon: WebSocket error - " .. tostring(error), vim.log.levels.ERROR)
 end
 
 function M.execute_js(code)

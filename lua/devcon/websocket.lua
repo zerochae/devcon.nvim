@@ -1,5 +1,20 @@
 local M = {}
 
+-- Config reference for debug logging
+M.config = nil
+
+-- Helper function for debug logging
+local function debug_log(message, level)
+  if M.config and M.config.debug then
+    vim.notify(message, level or vim.log.levels.INFO)
+  end
+end
+
+-- Set config for websocket module
+function M.set_config(config)
+  M.config = config
+end
+
 -- Get WebSocket URL from Chrome DevTools API with retry
 function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
   retry_count = retry_count or 5
@@ -15,7 +30,6 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
     on_stdout = function(_, data)
       if not data or #data == 0 or data[1] == "" then
         if retry_count > 0 and not callback_called.value then
-          vim.notify("DevCon: Empty response, retrying... (" .. retry_count .. " left)", vim.log.levels.WARN)
           vim.defer_fn(function()
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
@@ -49,7 +63,7 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
       local success, json_data = pcall(vim.json.decode, json_str)
 
       if not success then
-        vim.notify("DevCon: Invalid JSON from Chrome: " .. json_str:sub(1, 100) .. "...", vim.log.levels.ERROR)
+        debug_log("DevCon: Invalid JSON from Chrome: " .. json_str:sub(1, 100) .. "...", vim.log.levels.ERROR)
         if retry_count > 0 and not callback_called.value then
           vim.defer_fn(function()
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
@@ -65,14 +79,14 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
 
       if not json_data or type(json_data) ~= "table" or #json_data == 0 then
         if retry_count > 0 and not callback_called.value then
-          vim.notify("DevCon: No tabs found, retrying... (" .. retry_count .. " left)", vim.log.levels.WARN)
+          debug_log("DevCon: No tabs found, retrying... (" .. retry_count .. " left)", vim.log.levels.WARN)
           vim.defer_fn(function()
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
         else
           if not callback_called.value then
             callback_called.value = true
-            vim.notify("DevCon: No debuggable tabs found", vim.log.levels.ERROR)
+            vim.notify("DevCon: No browser tabs available for debugging", vim.log.levels.ERROR)
             callback(nil)
           end
         end
@@ -83,7 +97,7 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
       for _, tab in ipairs(json_data) do
         if tab.webSocketDebuggerUrl and tab.type == "page" and not callback_called.value then
           callback_called.value = true
-          vim.notify("DevCon: Found debuggable tab: " .. (tab.title or "Unknown"), vim.log.levels.INFO)
+          debug_log("DevCon: Found debuggable tab: " .. (tab.title or "Unknown"))
           -- Call callback immediately to prevent race condition
           callback(tab.webSocketDebuggerUrl)
           return
@@ -91,14 +105,14 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
       end
 
       if retry_count > 0 and not callback_called.value then
-        vim.notify("DevCon: No debuggable pages in " .. #json_data .. " tabs, retrying... (" .. retry_count .. " left)", vim.log.levels.WARN)
+        debug_log("DevCon: No debuggable pages in " .. #json_data .. " tabs, retrying... (" .. retry_count .. " left)", vim.log.levels.WARN)
         vim.defer_fn(function()
           M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
         end, 1000)
       else
         if not callback_called.value then
           callback_called.value = true
-          vim.notify("DevCon: No debuggable pages found after all retries", vim.log.levels.ERROR)
+          vim.notify("DevCon: No browser tabs available for debugging", vim.log.levels.ERROR)
           callback(nil)
         end
       end
@@ -106,7 +120,7 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
     on_stderr = function(_, data)
       if data and data[1] ~= "" then
         local error_msg = table.concat(data, "\n")
-        vim.notify("DevCon: curl error: " .. error_msg, vim.log.levels.ERROR)
+        debug_log("DevCon: curl error: " .. error_msg, vim.log.levels.ERROR)
       end
       if retry_count > 0 and not callback_called.value then
         vim.defer_fn(function()
@@ -119,14 +133,14 @@ function M.get_websocket_url(debug_port, callback, retry_count, callback_called)
     on_exit = function(_, code)
       if code ~= 0 then
         if retry_count > 0 and not callback_called.value then
-          vim.notify("DevCon: Chrome not ready (exit " .. code .. "), retrying... (" .. retry_count .. " left)", vim.log.levels.WARN)
+          debug_log("DevCon: Chrome not ready (exit " .. code .. "), retrying... (" .. retry_count .. " left)", vim.log.levels.WARN)
           vim.defer_fn(function()
             M.get_websocket_url(debug_port, callback, retry_count - 1, callback_called)
           end, 1000)
         else
           if not callback_called.value then
             callback_called.value = true
-            vim.notify("DevCon: Failed to connect to Chrome after all retries", vim.log.levels.ERROR)
+            vim.notify("DevCon: Failed to connect to browser", vim.log.levels.ERROR)
             callback(nil)
           end
         end

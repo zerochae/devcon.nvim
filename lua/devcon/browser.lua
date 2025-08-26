@@ -1,5 +1,20 @@
 local M = {}
 
+-- Config reference for debug logging
+M.config = nil
+
+-- Helper function for debug logging
+local function debug_log(message, level)
+  if M.config and M.config.debug then
+    vim.notify(message, level or vim.log.levels.INFO)
+  end
+end
+
+-- Set config for browser module
+function M.set_config(config)
+  M.config = config
+end
+
 -- Detect current OS
 local function get_os()
   return vim.loop.os_uname().sysname
@@ -37,6 +52,8 @@ function M.start_browser(url, debug_port, browser_type, arc_mode, browser_paths)
     vim.notify("DevCon: Browser not found: " .. browser_type, vim.log.levels.ERROR)
     return nil
   end
+
+  debug_log("DevCon: Starting browser: " .. browser_type)
 
   -- Build command arguments
   local args = {}
