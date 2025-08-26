@@ -1,0 +1,17 @@
+# Vim/Neovim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Node modules (if we add JS tools later)
+node_modules/
+
+# Temp files
+*.tmp
+*.temp
