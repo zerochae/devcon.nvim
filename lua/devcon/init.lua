@@ -85,15 +85,17 @@ function M.start_debug_session(url)
 
   M.state.browser_process = browser_result
 
-  -- Wait a bit for browser to start
+  -- Wait a bit longer for browser to start
+  vim.notify("DevCon: Waiting for Chrome to start...", vim.log.levels.INFO)
   vim.defer_fn(function()
-    -- Get WebSocket URL from Chrome DevTools API
+    -- Get WebSocket URL from Chrome DevTools API with retry
     websocket.get_websocket_url(M.config.browser.debug_port, function(ws_url)
       if not ws_url then
-        vim.notify("Failed to get WebSocket URL", vim.log.levels.ERROR)
+        vim.notify("DevCon: Failed to get WebSocket URL after retries", vim.log.levels.ERROR)
         return
       end
 
+      vim.notify("DevCon: Connecting to WebSocket...", vim.log.levels.INFO)
       -- Connect to WebSocket
       M.state.websocket = websocket.connect(ws_url, {
         on_message = M.on_console_message,
@@ -112,7 +114,7 @@ function M.start_debug_session(url)
         websocket.send_command(M.state.websocket, "Console.enable")
       end
     end)
-  end, 2000)
+  end, 3000)
 
   return true
 end
